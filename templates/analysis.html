@@ -1,0 +1,102 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card-header">
+  <h2>AI Spending Analysis</h2>
+  <div style="display: flex; align-items: center; gap: 10px;">
+    <span id="ai-status-badge" class="tag tag-amber">Checking...</span>
+    <button class="btn primary" onclick="runAnalysis()" id="run-btn">
+      Run Analysis
+    </button>
+  </div>
+</div>
+
+  <div id="result-box" style="display: none; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px;">
+    <p style="font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">Analysis</p>
+    <p id="result" style="font-size: 14px; line-height: 1.8; color: var(--text); white-space: pre-wrap;"></p>
+  </div>
+
+  <p id="placeholder" style="color: var(--muted); font-size: 13px; text-align: center; padding: 32px 0;">
+    Click "Run Analysis" to get AI insights on your spending habits.
+  </p>
+</div>
+
+<script>
+function runAnalysis() {
+  const btn = document.getElementById('run-btn');
+  const result = document.getElementById('result');
+  const box = document.getElementById('result-box');
+  const placeholder = document.getElementById('placeholder');
+
+  btn.textContent = 'Analyzing...';
+  btn.disabled = true;
+  placeholder.style.display = 'none';
+  box.style.display = 'block';
+  result.textContent = '';
+
+  fetch("/analysis-ai")
+    .then(res => res.json())
+    .then(data => {
+      result.textContent = data.response;
+      btn.textContent = 'Run Again';
+      btn.disabled = false;
+    })
+    .catch(() => {
+      result.textContent = 'Error loading analysis. Please try again.';
+      btn.textContent = 'Run Analysis';
+      btn.disabled = false;
+    });
+}
+</script>
+<script>
+function checkAIStatus() {
+  const badge = document.getElementById('ai-status-badge');
+
+  fetch('/ai-status')
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === 'online') {
+        badge.textContent = 'Online';
+        badge.className = 'tag tag-green';
+      } else {
+        badge.textContent = 'Offline';
+        badge.className = 'tag tag-red';
+      }
+    })
+    .catch(() => {
+      badge.textContent = 'Offline';
+      badge.className = 'tag tag-red';
+    });
+}
+
+function runAnalysis() {
+  const btn = document.getElementById('run-btn');
+  const result = document.getElementById('result');
+  const box = document.getElementById('result-box');
+  const placeholder = document.getElementById('placeholder');
+
+  btn.textContent = 'Analyzing...';
+  btn.disabled = true;
+  placeholder.style.display = 'none';
+  box.style.display = 'block';
+  result.textContent = '';
+
+  fetch("/analysis-ai")
+    .then(res => res.json())
+    .then(data => {
+      result.textContent = data.response;
+      btn.textContent = 'Run Again';
+      btn.disabled = false;
+    })
+    .catch(() => {
+      result.textContent = 'Error loading analysis. Please try again.';
+      btn.textContent = 'Run Analysis';
+      btn.disabled = false;
+    });
+}
+
+checkAIStatus();
+setInterval(checkAIStatus, 30000);
+</script>
+
+{% endblock %}

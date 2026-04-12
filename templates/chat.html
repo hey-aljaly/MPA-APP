@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card-header">
+  <h2>AI Financial Assistant</h2>
+  <span id="ai-status-badge" class="tag tag-amber">Checking...</span>
+</div>
+
+  {% if answer %}
+  <div style="background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px; margin-bottom: 20px;">
+    <p style="font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px;">AI Response</p>
+    <p style="font-size: 14px; line-height: 1.7; color: var(--text);">{{ answer }}</p>
+  </div>
+  {% endif %}
+
+  <form method="POST">
+    <div class="form-group">
+      <label>Ask a question</label>
+      <input type="text" name="question" placeholder="e.g. How much did I spend on food this month?" required style="width: 100%;">
+    </div>
+    <button type="submit" class="btn primary" style="width: 100%; justify-content: center;">
+      Ask AI
+    </button>
+  </form>
+</div>
+<script>
+function checkAIStatus() {
+  const badge = document.getElementById('ai-status-badge');
+
+  fetch('/ai-status')
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === 'online') {
+        badge.textContent = 'Online';
+        badge.className = 'tag tag-green';
+      } else {
+        badge.textContent = 'Offline';
+        badge.className = 'tag tag-red';
+      }
+    })
+    .catch(() => {
+      badge.textContent = 'Offline';
+      badge.className = 'tag tag-red';
+    });
+}
+
+checkAIStatus();
+setInterval(checkAIStatus, 30000);
+</script>
+{% endblock %}

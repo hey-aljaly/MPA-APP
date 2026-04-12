@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block content %}
+
+<!-- Stat summary row -->
+<div class="stat-grid">
+  <div class="stat">
+    <div class="stat-label">Total spent</div>
+    <div class="stat-value">RM {{ total }}</div>
+  </div>
+  <div class="stat">
+    <div class="stat-label">Period</div>
+    <div class="stat-value" style="font-size: 14px; padding-top: 4px;">
+      {% if request.args.get('month') %}{{ request.args.get('month') }}{% else %}All time{% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- Transactions card -->
+<div class="card">
+  <div class="card-header">
+    <h2>Your Transactions</h2>
+    {% if request.args.get('month') %}
+    <span style="font-size: 12px; padding: 4px 10px; background: #eff6ff; color: #2563eb; border-radius: 6px; font-weight: 500;">
+      {{ request.args.get('month') }}
+    </span>
+    {% endif %}
+  </div>
+
+  <div class="filter-row">
+    <form method="GET" style="display: flex; align-items: center; gap: 8px; margin: 0;">
+      <input type="month" name="month" value="{{ request.args.get('month', '') }}">
+      <button type="submit" class="btn primary">Filter</button>
+      <a href="/dashboard" style="font-size: 13px; color: #ef4444; font-weight: 500; text-decoration: none;">Reset</a>
+    </form>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Amount</th>
+        <th>Type</th>
+        <th>Category</th>
+        <th>Date</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for t in transactions %}
+      <tr>
+        <td style="font-weight: 500;">RM {{ t[1] }}</td>
+        <td>
+          {% if t[2] == 'expense' %}
+            <span class="tag tag-red">{{ t[2] }}</span>
+          {% else %}
+            <span class="tag tag-green">{{ t[2] }}</span>
+          {% endif %}
+        </td>
+        <td><span class="tag tag-blue">{{ t[3] }}</span></td>
+        <td style="color: #64748b;">{{ t[4] }}</td>
+        <td><a href="/delete/{{ t[0] }}" class="btn-link-danger">Delete</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- Budget usage card -->
+<div class="card">
+  <div class="card-header">
+    <h2>Budget Usage</h2>
+  </div>
+
+  {% for category, limit in budgets.items() %}
+    {% set spent = category_totals.get(category, 0) %}
+    {% set percent = (spent / limit * 100) if limit > 0 else 0 %}
+    <div class="progress-label">
+      <span>{{ category }}</span>
+      <span>RM {{ spent }} / RM {{ limit }}</span>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-bar" style="
+        width: {{ [percent, 100]|min }}%;
+        background: {% if percent > 100 %}#ef4444{% elif percent > 80 %}#f59e0b{% else %}#22c55e{% endif %};
+      "></div>
+    </div>
+  {% endfor %}
+</div>
+
+<!-- Chart card -->
+<div class="card">
+  <div class="card-header">
+    <h2>Spending by Category</h2>
+  </div>
+  <canvas id="myChart" style="max-height: 300px;"></canvas>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+new Chart(document.getElementById('myChart'), {
+  type: 'pie',
+  data: {
+    labels: [{% for c in chart_data %}"{{ c[0] }}",{% endfor %}],
+    datasets: [{
+      label: 'Spending',
+      data: [{% for c in chart_data %}{{ c[1] }},{% endfor %}],
+      backgroundColor: ['#2563eb','#16a34a','#d97706','#dc2626','#7c3aed','#0891b2'],
+      borderWidth: 0,
+    }]
+  },
+  options: {
+    plugins: {
+      legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 16 } }
+    }
+  }
+});
+</script>
+
+{% endblock %}

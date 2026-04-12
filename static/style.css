@@ -1,0 +1,455 @@
+/* ===== RESET ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ===== ROOT ===== */
+:root {
+  --bg:        #0f1117;
+  --bg2:       #161b27;
+  --bg3:       #1e2535;
+  --border:    #2a3347;
+  --border2:   #3a4560;
+  --text:      #e8edf5;
+  --muted:     #6b7a99;
+  --accent:    #3b82f6;
+  --accent-dim:#1d4ed8;
+  --green:     #22c55e;
+  --green-bg:  #052e16;
+  --green-text:#4ade80;
+  --amber:     #f59e0b;
+  --amber-bg:  #1c1008;
+  --amber-text:#fbbf24;
+  --red:       #ef4444;
+  --red-bg:    #1f0808;
+  --red-text:  #f87171;
+  --blue-bg:   #0c1a33;
+  --blue-text: #60a5fa;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+}
+
+/* ===== BODY ===== */
+body {
+  font-family: 'DM Sans', 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* ===== NAVBAR ===== */
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg2);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+  height: 56px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.logo {
+  font-weight: 600;
+  font-size: 15px;
+  color: var(--text);
+  letter-spacing: -0.3px;
+}
+
+.logo::before {
+  content: '◈ ';
+  color: var(--accent);
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.nav-links a {
+  color: var(--muted);
+  padding: 6px 12px;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  border-radius: var(--radius-sm);
+  transition: background 0.15s, color 0.15s;
+}
+
+.nav-links a:hover {
+  background: var(--bg3);
+  color: var(--text);
+}
+
+.nav-links a.active {
+  background: var(--blue-bg);
+  color: var(--blue-text);
+}
+
+.nav-logout {
+  margin-left: 8px;
+  color: var(--red-text) !important;
+}
+
+.nav-logout:hover {
+  background: var(--red-bg) !important;
+  color: var(--red-text) !important;
+}
+
+/* ===== CONTAINER ===== */
+.container {
+  max-width: 1060px;
+  margin: 0 auto;
+  padding: 32px 24px;
+}
+
+/* ===== CARD ===== */
+.card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.card-header h2 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.2px;
+}
+
+/* ===== STAT GRID ===== */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.stat {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 18px 20px;
+}
+
+.stat-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: -0.5px;
+  font-family: 'DM Mono', monospace;
+}
+
+/* ===== FILTER ROW ===== */
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.filter-row form {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+}
+
+input[type="month"],
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+select {
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border2);
+  background: var(--bg3);
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+input:focus, select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+/* ===== BUTTONS ===== */
+button, .btn {
+  padding: 8px 14px;
+  border: 1px solid var(--border2);
+  background: var(--bg3);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  font-family: inherit;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+button:hover, .btn:hover {
+  background: var(--border);
+  border-color: var(--border2);
+}
+
+button.primary, .btn.primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: transparent;
+}
+
+button.primary:hover, .btn.primary:hover {
+  background: var(--accent-dim);
+}
+
+.btn-link-danger {
+  background: none;
+  border: none;
+  color: var(--red-text);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  font-family: inherit;
+  text-decoration: none;
+}
+
+.btn-link-danger:hover {
+  text-decoration: underline;
+}
+
+a.reset-link {
+  font-size: 13px;
+  color: var(--red-text);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+a.reset-link:hover {
+  text-decoration: underline;
+}
+
+/* ===== TABLE ===== */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+thead tr {
+  border-bottom: 1px solid var(--border);
+}
+
+th {
+  text-align: left;
+  padding: 10px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+tr:hover td {
+  background: var(--bg3);
+}
+
+/* ===== TAGS ===== */
+.tag {
+  display: inline-block;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
+.tag-blue   { background: var(--blue-bg);  color: var(--blue-text); }
+.tag-green  { background: var(--green-bg); color: var(--green-text); }
+.tag-amber  { background: var(--amber-bg); color: var(--amber-text); }
+.tag-red    { background: var(--red-bg);   color: var(--red-text); }
+
+/* ===== PROGRESS ===== */
+.progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.progress-wrap {
+  background: var(--bg3);
+  border-radius: 999px;
+  height: 6px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.progress-bar {
+  height: 100%;
+  border-radius: 999px;
+  transition: width 0.4s ease;
+}
+
+/* ===== CHART CARD ===== */
+canvas {
+  max-height: 280px;
+}
+
+/* ===== FORMS (add/budget pages) ===== */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  margin-bottom: 6px;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+
+  /* Navbar — stack logo + links, make links scrollable */
+  .navbar {
+    flex-direction: column;
+    height: auto;
+    padding: 12px 16px;
+    gap: 10px;
+  }
+
+  .nav-links {
+    width: 100%;
+    overflow-x: auto;
+    gap: 2px;
+    padding-bottom: 2px;
+    /* Hide scrollbar but still scrollable */
+    scrollbar-width: none;
+  }
+
+  .nav-links::-webkit-scrollbar {
+    display: none;
+  }
+
+  .nav-links a {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Container padding */
+  .container {
+    padding: 16px 12px;
+  }
+
+  /* Cards */
+  .card {
+    padding: 16px;
+    border-radius: var(--radius-md);
+  }
+
+  /* Stat grid — 2 columns on phone */
+  .stat-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stat-value {
+    font-size: 18px;
+  }
+
+  /* Budget two-column → single column */
+  div[style*="grid-template-columns: 1fr 1fr"] {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  /* Table — allow horizontal scroll */
+  .card {
+    overflow-x: auto;
+  }
+
+  table {
+    min-width: 480px;
+  }
+
+  /* Auth pages — remove centering min-height */
+  div[style*="min-height: 80vh"] {
+    min-height: unset !important;
+    padding: 16px 0;
+  }
+
+  /* Filter row — wrap on small screens */
+  .filter-row,
+  .filter-row form {
+    flex-wrap: wrap;
+  }
+
+  input[type="month"] {
+    width: 100%;
+  }
+
+}
+
+@media (max-width: 480px) {
+
+  /* Stat grid — full width on very small screens */
+  .stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Buttons full width in forms */
+  .btn.primary[style*="width: 100%"] {
+    font-size: 14px;
+    padding: 12px;
+  }
+

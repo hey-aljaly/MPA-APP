@@ -1,12 +1,13 @@
 # Personal Finance AI App
 
-![Language](https://img.shields.io/badge/Language-Python-blue)
-![Framework](https://img.shields.io/badge/Framework-Flask-black)
-![Database](https://img.shields.io/badge/Database-MariaDB-orange)
-![AI](https://img.shields.io/badge/LLM-phi3-green)
-![Runtime](https://img.shields.io/badge/AI%20Runtime-Ollama-purple)
-![Status](https://img.shields.io/badge/Status-Working-brightgreen)
-
+![Python](https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-3.0-000000?style=flat-square&logo=flask&logoColor=white)
+![MariaDB](https://img.shields.io/badge/MariaDB-10.6-003545?style=flat-square&logo=mariadb&logoColor=white)
+![Ollama](https://img.shields.io/badge/Ollama-local-000000?style=flat-square&logo=ollama&logoColor=white)
+![Phi3](https://img.shields.io/badge/LLM-phi3-6366f1?style=flat-square&logo=microsoftazure&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-ES6-F7DF1E?style=flat-square&logo=javascript&logoColor=black)
+![Chart.js](https://img.shields.io/badge/Chart.js-4.0-FF6384?style=flat-square&logo=chartdotjs&logoColor=white)
+![Status](https://img.shields.io/badge/Status-Working-22c55e?style=flat-square)
 ---
 
 ## Overview

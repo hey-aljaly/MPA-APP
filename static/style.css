@@ -107,6 +107,16 @@ body {
   padding: 32px 24px;
 }
 
+/* ===== ANIMATIONS ===== */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
 /* ===== CARD ===== */
 .card {
   background: var(--bg2);
@@ -114,6 +124,7 @@ body {
   border-radius: var(--radius-lg);
   padding: 24px;
   margin-bottom: 20px;
+  animation: fadeUp 0.3s ease;
 }
 
 .card-header {
@@ -130,6 +141,30 @@ body {
   font-weight: 600;
   color: var(--text);
   letter-spacing: -0.2px;
+}
+
+/* ===== LOADER ===== */
+.loader {
+  border: 3px solid var(--border);
+  border-top: 3px solid var(--accent);
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  animation: spin 0.8s linear infinite;
+  margin: auto;
+}
+
+/* ===== AI RESULT BOX ===== */
+#ai-result {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  padding: 16px;
+  border-radius: var(--radius-md);
+  margin-top: 10px;
+  white-space: pre-line;
+  line-height: 1.7;
+  color: var(--text);
+  font-size: 13px;
 }
 
 /* ===== STAT GRID ===== */
@@ -179,6 +214,7 @@ body {
   margin: 0;
 }
 
+/* ===== INPUTS ===== */
 input[type="month"],
 input[type="text"],
 input[type="number"],
@@ -222,6 +258,10 @@ button, .btn {
 button:hover, .btn:hover {
   background: var(--border);
   border-color: var(--border2);
+}
+
+button:active {
+  transform: scale(0.96);
 }
 
 button.primary, .btn.primary {
@@ -333,12 +373,12 @@ tr:hover td {
   transition: width 0.4s ease;
 }
 
-/* ===== CHART CARD ===== */
+/* ===== CHART ===== */
 canvas {
   max-height: 280px;
 }
 
-/* ===== FORMS (add/budget pages) ===== */
+/* ===== FORMS ===== */
 .form-group {
   margin-bottom: 16px;
 }
@@ -358,10 +398,77 @@ canvas {
   width: 100%;
 }
 
+/* ===== FLASH ALERTS ===== */
+.alert-container {
+  position: fixed;
+  top: 70px;
+  right: 20px;
+  z-index: 999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 320px;
+  width: 100%;
+}
+
+.alert {
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 500;
+  border-left: 3px solid;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  animation: slideIn 0.25s ease, fadeOut 0.4s ease 3.6s forwards;
+}
+
+.alert::before {
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.alert.success {
+  background: var(--green-bg);
+  color: var(--green-text);
+  border-color: var(--green);
+}
+.alert.success::before { content: '✓'; color: var(--green); }
+
+.alert.error, .alert.danger {
+  background: var(--red-bg);
+  color: var(--red-text);
+  border-color: var(--red);
+}
+.alert.error::before, .alert.danger::before { content: '✕'; color: var(--red); }
+
+.alert.warning {
+  background: var(--amber-bg);
+  color: var(--amber-text);
+  border-color: var(--amber);
+}
+.alert.warning::before { content: '⚠'; color: var(--amber); }
+
+.alert.info {
+  background: var(--blue-bg);
+  color: var(--blue-text);
+  border-color: var(--accent);
+}
+.alert.info::before { content: 'i'; color: var(--accent); font-weight: 700; }
+
+@keyframes slideIn {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(40px); }
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
 
-  /* Navbar — stack logo + links, make links scrollable */
   .navbar {
     flex-direction: column;
     height: auto;
@@ -374,7 +481,6 @@ canvas {
     overflow-x: auto;
     gap: 2px;
     padding-bottom: 2px;
-    /* Hide scrollbar but still scrollable */
     scrollbar-width: none;
   }
 
@@ -387,18 +493,16 @@ canvas {
     flex-shrink: 0;
   }
 
-  /* Container padding */
   .container {
     padding: 16px 12px;
   }
 
-  /* Cards */
   .card {
     padding: 16px;
     border-radius: var(--radius-md);
+    overflow-x: auto;
   }
 
-  /* Stat grid — 2 columns on phone */
   .stat-grid {
     grid-template-columns: repeat(2, 1fr);
   }
@@ -407,28 +511,20 @@ canvas {
     font-size: 18px;
   }
 
-  /* Budget two-column → single column */
   div[style*="grid-template-columns: 1fr 1fr"] {
     display: flex !important;
     flex-direction: column !important;
-  }
-
-  /* Table — allow horizontal scroll */
-  .card {
-    overflow-x: auto;
   }
 
   table {
     min-width: 480px;
   }
 
-  /* Auth pages — remove centering min-height */
   div[style*="min-height: 80vh"] {
     min-height: unset !important;
     padding: 16px 0;
   }
 
-  /* Filter row — wrap on small screens */
   .filter-row,
   .filter-row form {
     flex-wrap: wrap;
@@ -438,18 +534,25 @@ canvas {
     width: 100%;
   }
 
+  .alert-container {
+    top: auto;
+    bottom: 20px;
+    right: 12px;
+    left: 12px;
+    max-width: 100%;
+  }
+
 }
 
 @media (max-width: 480px) {
 
-  /* Stat grid — full width on very small screens */
   .stat-grid {
     grid-template-columns: 1fr;
   }
 
-  /* Buttons full width in forms */
   .btn.primary[style*="width: 100%"] {
     font-size: 14px;
     padding: 12px;
   }
 
+}

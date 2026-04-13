@@ -41,6 +41,7 @@
         <th>Type</th>
         <th>Category</th>
         <th>Date</th>
+        <th>Note</th>
         <th>Action</th>
       </tr>
     </thead>
@@ -56,7 +57,8 @@
           {% endif %}
         </td>
         <td><span class="tag tag-blue">{{ t[3] }}</span></td>
-        <td style="color: #64748b;">{{ t[4] }}</td>
+        <td style="color: #64748b;">{{ t[4].strftime('%Y-%m-%d') }}</td>
+        <td>{{ t[5] if t[5] else "-" }}</td>
         <td><a href="/delete/{{ t[0] }}" class="btn-link-danger">Delete</a></td>
       </tr>
       {% endfor %}
@@ -68,6 +70,7 @@
 <div class="card">
   <div class="card-header">
     <h2>Budget Usage</h2>
+    <h3>Total Budget: RM {{ total_budget }}</h3>
   </div>
 
   {% for category, limit in budgets.items() %}

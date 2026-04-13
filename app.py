@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 import os
-from flask import Flask, render_template, request, session, redirect, url_for, jsonify
+from flask import Flask, render_template, request, session, redirect, url_for, jsonify, flash
 from flask_mysqldb import MySQL
 import requests
 import bcrypt
@@ -23,6 +23,7 @@ mysql = MySQL(app)
 @app.route("/")
 def home():
     if "user_id" not in session:
+        flash("Please log in to access your dashboard.")
         return redirect("/signup")
     return redirect("/dashboard")
 
@@ -81,7 +82,9 @@ def signup():
 @app.route("/add", methods=["GET", "POST"])
 def add_transaction():
     if "user_id" not in session:
-        return "you not supposed to be here if you're not logged in."
+        flash("Please log in to access your dashboard.")
+        return redirect("/login")
+
 
     cur = mysql.connection.cursor()
 
@@ -89,18 +92,20 @@ def add_transaction():
         amount = request.form["amount"]
         t_type = request.form["type"]
         category = request.form["category"]
+        note = request.form.get("note")
 
         cur.execute(
-            "INSERT INTO transactions (user_id, amount, type, category) VALUES (%s, %s, %s, %s)", 
-            (session["user_id"], amount, t_type, category)
+            "INSERT INTO transactions (user_id, amount, type, category, note) VALUES (%s, %s, %s, %s, %s)", 
+            (session["user_id"], amount, t_type, category, note)
             )
         mysql.connection.commit()
+
+        flash("Transaction added successfully!", "success")
 
         return redirect(url_for("add_transaction"))
 
     cur.execute("""
-        SELECT DISTINCT category 
-        FROM transactions 
+        SELECT name FROM categories
         WHERE user_id = %s
     """, (session["user_id"],))
 
@@ -109,10 +114,39 @@ def add_transaction():
 
     return render_template("transactions.html", categories=categories)
 
+# ==================== ROUTE FOR CATEGORY MANAGEMENT (EARLY PROFILE PAGE) ====================
+@app.route("/categories", methods=["GET", "POST"])
+def manage_categories():
+    if "user_id" not in session:
+        flash("Please log in to access your dashboard.")
+        return redirect("/login")
+    
+    cur = mysql.connection.cursor()
+
+    if request.method == "POST":
+        name = request.form["name"]
+
+        cur.execute(
+            "INSERT INTO categories (user_id, name) VALUES (%s, %s)",
+            (session["user_id"], name)
+        )
+        mysql.connection.commit()
+
+    cur.execute(
+        "SELECT name FROM categories WHERE user_id = %s",
+        (session["user_id"],)
+    )
+    categories = cur.fetchall()
+
+    cur.close()
+
+    return render_template("categories.html", categories=categories)
+
 # ===================== ROUTE FOR VIEWING DASHBOARD =====================
 @app.route("/dashboard")
 def dashboard():
     if "user_id" not in session:
+        flash("Please log in to access your dashboard.")
         return redirect("/login")
 
     month = request.args.get("month")
@@ -121,7 +155,7 @@ def dashboard():
 
     if month:
         cur.execute("""
-            SELECT id, amount, type, category, created_at 
+            SELECT id, amount, type, category, created_at, note
             FROM transactions 
             WHERE user_id = %s 
             AND DATE_FORMAT(created_at, '%%Y-%%m') = %s
@@ -129,7 +163,7 @@ def dashboard():
         """, (session["user_id"], month))
     else:
         cur.execute("""
-            SELECT id, amount, type, category, created_at 
+            SELECT id, amount, type, category, created_at, note
             FROM transactions 
             WHERE user_id = %s
             ORDER BY created_at DESC
@@ -146,6 +180,7 @@ def dashboard():
     """, (session["user_id"],))
 
     budgets = dict(cur.fetchall())
+    total_budget = sum(budgets.values())
 
     cur.execute("""
         SELECT category, SUM(amount)
@@ -155,6 +190,7 @@ def dashboard():
     """, (session["user_id"],))
 
     category_totals = dict(cur.fetchall())
+
 
     cur.execute("""
         SELECT category, SUM(amount)
@@ -173,7 +209,8 @@ def dashboard():
         total=total,
         budgets=budgets,
         chart_data=chart_data,
-        category_totals=category_totals
+        category_totals=category_totals,
+        total_budget=total_budget,
     )
 
 # ===================== ROUTE FOR DELETING TRANSACTIONS =====================
@@ -190,14 +227,16 @@ def delete_transaction(id):
 @app.route("/analysis")
 def analysis_page():
     if "user_id" not in session:
-        return "you not supposed to be here if you're not logged in."
+        flash("Please log in to access your dashboard.")
+        return redirect("/login")
     return render_template("analysis.html")
 
 # ===================== ROUTE FOR THE AI ANALYSIS (NOT A PAGE) =====================
 @app.route("/analysis-ai")
 def analysis():
     if "user_id" not in session:
-        return jsonify({"error": "you not supposed to be here if you're not logged in."})
+        flash("Please log in to access your dashboard.")
+        return redirect("/login")
 
     cur = mysql.connection.cursor()
     cur.execute("""
@@ -277,6 +316,10 @@ Warnings:
 Past insights:
 {past_text}
 
+IMPORTANT:
+Essential categories like rent, wifi, electricity, and water are necessary.
+Do not strongly criticize spending in these categories unless extremely excessive.
+
 Focus on warnings if any.
 
 Give advice on overspending and priorities.
@@ -311,7 +354,8 @@ Keep it short and clear.
 @app.route("/chat", methods=["GET", "POST"])
 def chat():
     if "user_id" not in session:
-        return "you not supposed to be here if you're not logged in."
+        flash("Please log in to access your dashboard.")
+        return redirect("/login")
     
     answer = None
 
@@ -351,6 +395,10 @@ Total spent: RM {total_spent}
 
 Top category: {top_category}
 
+IMPORTANT:
+Essential categories like rent, wifi, electricity, and water are necessary.
+Do not strongly criticize spending in these categories unless extremely excessive.
+
 Give:
 1. What the user is overspending on
 2. What they should reduce
@@ -376,7 +424,8 @@ Keep it short and clear.
 @app.route("/budget", methods=["GET","POST"])
 def budget():
     if "user_id" not in session:
-        return "you not supposed to be here if you're not logged in."
+        flash("Please log in to access your dashboard.")
+        return redirect("/login")
 
     cur = mysql.connection.cursor()
 
@@ -384,9 +433,11 @@ def budget():
         category = request.form["category"]
         limit = request.form["limit"]
 
-        cur.execute(
-            "INSERT INTO budgets (user_id, category, limit_amount) VALUES (%s, %s, %s)", 
-            (session["user_id"], category, limit)
+        cur.execute("""
+            INSERT INTO budgets (user_id, category, limit_amount) 
+            VALUES (%s, %s, %s)
+            ON DUPLICATE KEY UPDATE limit_amount = %s
+        """, (session["user_id"], category, limit, limit)
         )
         mysql.connection.commit()
 
@@ -400,6 +451,19 @@ def budget():
     cur.close()
 
     return render_template("budget.html", budgets=budgets)
+
+# ===================== ROUTE FOR DELETING BUDGETS =====================
+@app.route("/delete-budget/<category>")
+def delete_budget(category):
+    cur = mysql.connection.cursor()
+    cur.execute(
+        "DELETE FROM budgets WHERE user_id = %s AND category = %s", 
+        (session["user_id"], category)
+    )
+    mysql.connection.commit()
+    cur.close()
+
+    return redirect("/budget")
 
 
 # ===================== ROUTE FOR AI-AVAILAIBILITY CHECK =====================

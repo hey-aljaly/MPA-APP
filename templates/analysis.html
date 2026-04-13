@@ -1,67 +1,38 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="card-header">
-  <h2>AI Spending Analysis</h2>
-  <div style="display: flex; align-items: center; gap: 10px;">
-    <span id="ai-status-badge" class="tag tag-amber">Checking...</span>
-    <button class="btn primary" onclick="runAnalysis()" id="run-btn">
-      Run Analysis
-    </button>
-  </div>
-</div>
-
-  <div id="result-box" style="display: none; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 20px;">
-    <p style="font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">Analysis</p>
-    <p id="result" style="font-size: 14px; line-height: 1.8; color: var(--text); white-space: pre-wrap;"></p>
+<div class="card" style="max-width: 680px;">
+  <div class="card-header">
+    <h2>AI Spending Analysis</h2>
+    <div style="display: flex; align-items: center; gap: 10px;">
+      <span id="ai-status-badge" class="tag tag-amber">Checking...</span>
+      <button class="btn primary" onclick="runAnalysis()" id="run-btn">Run Analysis</button>
+    </div>
   </div>
 
-  <p id="placeholder" style="color: var(--muted); font-size: 13px; text-align: center; padding: 32px 0;">
+  <div id="placeholder" style="color: var(--muted); font-size: 13px; text-align: center; padding: 32px 0;">
     Click "Run Analysis" to get AI insights on your spending habits.
-  </p>
+  </div>
+
+  <div id="loading" style="display: none; text-align: center; padding: 24px 0;">
+    <div class="loader"></div>
+    <p style="color: var(--muted); font-size: 13px; margin-top: 12px;">Analyzing your spending...</p>
+  </div>
+
+  <div id="result-box" style="display: none;">
+    <p style="font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px;">Analysis</p>
+    <div id="ai-result"></div>
+  </div>
 </div>
 
-<script>
-function runAnalysis() {
-  const btn = document.getElementById('run-btn');
-  const result = document.getElementById('result');
-  const box = document.getElementById('result-box');
-  const placeholder = document.getElementById('placeholder');
-
-  btn.textContent = 'Analyzing...';
-  btn.disabled = true;
-  placeholder.style.display = 'none';
-  box.style.display = 'block';
-  result.textContent = '';
-
-  fetch("/analysis-ai")
-    .then(res => res.json())
-    .then(data => {
-      result.textContent = data.response;
-      btn.textContent = 'Run Again';
-      btn.disabled = false;
-    })
-    .catch(() => {
-      result.textContent = 'Error loading analysis. Please try again.';
-      btn.textContent = 'Run Analysis';
-      btn.disabled = false;
-    });
-}
-</script>
 <script>
 function checkAIStatus() {
   const badge = document.getElementById('ai-status-badge');
-
   fetch('/ai-status')
     .then(res => res.json())
     .then(data => {
-      if (data.status === 'online') {
-        badge.textContent = 'Online';
-        badge.className = 'tag tag-green';
-      } else {
-        badge.textContent = 'Offline';
-        badge.className = 'tag tag-red';
-      }
+      badge.textContent = data.status === 'online' ? 'Online' : 'Offline';
+      badge.className = data.status === 'online' ? 'tag tag-green' : 'tag tag-red';
     })
     .catch(() => {
       badge.textContent = 'Offline';
@@ -69,27 +40,44 @@ function checkAIStatus() {
     });
 }
 
+function typeText(text) {
+  const el = document.getElementById('ai-result');
+  el.innerHTML = '';
+  let i = 0;
+  function tick() {
+    if (i < text.length) {
+      el.innerHTML += text.charAt(i++);
+      setTimeout(tick, 15);
+    }
+  }
+  tick();
+}
+
 function runAnalysis() {
   const btn = document.getElementById('run-btn');
-  const result = document.getElementById('result');
-  const box = document.getElementById('result-box');
   const placeholder = document.getElementById('placeholder');
+  const loading = document.getElementById('loading');
+  const resultBox = document.getElementById('result-box');
 
   btn.textContent = 'Analyzing...';
   btn.disabled = true;
   placeholder.style.display = 'none';
-  box.style.display = 'block';
-  result.textContent = '';
+  resultBox.style.display = 'none';
+  loading.style.display = 'block';
 
-  fetch("/analysis-ai")
+  fetch('/analysis-ai')
     .then(res => res.json())
     .then(data => {
-      result.textContent = data.response;
+      loading.style.display = 'none';
+      resultBox.style.display = 'block';
+      typeText(data.response);
       btn.textContent = 'Run Again';
       btn.disabled = false;
     })
     .catch(() => {
-      result.textContent = 'Error loading analysis. Please try again.';
+      loading.style.display = 'none';
+      resultBox.style.display = 'block';
+      document.getElementById('ai-result').textContent = 'Error loading analysis. Please try again.';
       btn.textContent = 'Run Analysis';
       btn.disabled = false;
     });

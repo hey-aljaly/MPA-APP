@@ -1,55 +1,48 @@
 {% extends "base.html" %}
 {% block content %}
+
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
 
   <div class="card">
     <div class="card-header">
-      <h2>Set Budget</h2>
+      <h2>Add Category</h2>
     </div>
     <form method="POST">
       <div class="form-group">
-        <label>Category</label>
-        <input type="text" name="category" placeholder="e.g. Food, Transport..." required>
-      </div>
-      <div class="form-group">
-        <label>Monthly limit (RM)</label>
-        <input type="number" step="0.01" name="limit" placeholder="0.00" required>
+        <label>Category Name</label>
+        <input type="text" name="name" placeholder="e.g. Food, Transport..." required>
       </div>
       <button type="submit" class="btn primary" style="width: 100%; justify-content: center;">
-        Save Budget
+        Add Category
       </button>
     </form>
   </div>
 
   <div class="card">
     <div class="card-header">
-      <h2>Your Budgets</h2>
-      <span style="font-size: 12px; color: var(--muted);">{{ budgets|length }} categories</span>
+      <h2>Your Categories</h2>
+      <span style="font-size: 12px; color: var(--muted);">{{ categories|length }} total</span>
     </div>
-    {% if budgets %}
+    {% if categories %}
     <table>
       <thead>
         <tr>
+          <th>#</th>
           <th>Category</th>
-          <th>Limit</th>
         </tr>
       </thead>
-      
       <tbody>
-        {% for b in budgets %}
+        {% for c in categories %}
         <tr>
-          <td><span class="tag tag-blue">{{ b[0] }}</span></td>
-          <td style="font-family: 'DM Mono', monospace; font-weight: 500;">RM {{ b[1] }}</td>
-          <td>
-    <a href="/delete-budget/{{ b[0] }}">Delete</a>
-</td>
+          <td style="color: var(--muted); font-family: 'DM Mono', monospace;">{{ loop.index }}</td>
+          <td><span class="tag tag-blue">{{ c[0] }}</span></td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
     {% else %}
     <p style="color: var(--muted); font-size: 13px; text-align: center; padding: 24px 0;">
-      No budgets set yet.
+      No categories yet. Add one to get started.
     </p>
     {% endif %}
   </div>

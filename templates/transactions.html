@@ -19,12 +19,16 @@
     </div>
     <div class="form-group">
       <label>Category</label>
-      <input list="categories" name="category" placeholder="e.g. Food, Transport..." required>
-      <datalist id="categories">
+      <select name="category" required>
+        <option value="" disabled selected>Select category</option>
         {% for c in categories %}
-        <option value="{{ c }}">
+        <option value="{{ c }}">{{ c }}</option>
         {% endfor %}
-      </datalist>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Note <span style="color: var(--muted); font-weight: 400;">(optional)</span></label>
+      <input type="text" name="note" placeholder="Add a note...">
     </div>
     <button type="submit" class="btn primary" style="width: 100%; justify-content: center;">
       Add Transaction

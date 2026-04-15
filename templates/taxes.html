@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
+
+  <!-- Add Loan/Tax -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Add Entry</h2>
+    </div>
+    <form method="POST">
+      <div class="form-group">
+        <label>Who / What</label>
+        <input type="text" name="name" placeholder="e.g. Friend, Bank, Gadoora" required>
+      </div>
+      <div class="form-group">
+        <label>Amount Owed (RM)</label>
+        <input type="number" step="0.01" name="amount" placeholder="0.00" required>
+      </div>
+      <button type="submit" class="btn primary" style="width: 100%; justify-content: center;">
+        Add Entry
+      </button>
+    </form>
+  </div>
+
+  <!-- Loans/Taxes List -->
+  <div class="card">
+    <div class="card-header">
+      <h2>Taxes / Loans</h2>
+      <span style="font-size: 12px; color: var(--muted);">{{ loans|length }} entries</span>
+    </div>
+
+    {% if loans %}
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Remaining</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for loan in loans %}
+        {% set percent = ((loan[2] - loan[3]) / loan[2] * 100) if loan[2] > 0 else 0 %}
+        
+        <tr>
+          <td style="font-weight: 500;">{{ loan[1] }}</td>
+          <td>
+            <span style="font-family: 'DM Mono', monospace;">RM {{ loan[3] }}</span>
+          </td>
+          <td style="color: var(--muted); font-family: 'DM Mono', monospace;">RM {{ loan[2] }}</td>
+        </tr>
+
+        <tr>
+          <td colspan="3" style="padding-top: 0; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
+
+            <!-- Progress Bar -->
+            <div class="progress-wrap" style="margin-bottom: 10px;">
+              <div class="progress-bar" style="
+                width: {{ percent }}%;
+                background: {% if percent >= 100 %}var(--green){% elif percent > 50 %}var(--accent){% else %}var(--amber){% endif %};
+              "></div>
+            </div>
+
+            <!-- ✅ UPDATED PAY FORM -->
+            <form method="POST" action="/pay-tax" style="display:flex; gap:8px;">
+              <input type="hidden" name="loan_id" value="{{ loan[0] }}">
+              <input type="number" step="0.01" name="amount" placeholder="Amount to pay" required style="flex:1;">
+              <input type="text" name="note" placeholder="Optional note" style="flex:1;">
+              <button type="submit" class="btn primary">Pay</button>
+            </form>
+
+          </td>
+        </tr>
+
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p style="color: var(--muted); font-size: 13px; text-align: center; padding: 24px 0;">
+      No entries yet. Add a loan or tax above.
+    </p>
+    {% endif %}
+  </div>
+
+</div>
+
+{% endblock %}

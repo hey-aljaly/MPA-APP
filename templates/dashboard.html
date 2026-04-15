@@ -15,6 +15,35 @@
   </div>
 </div>
 
+<form method="GET" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:15px;">
+
+  <select name="filter">
+    <option value="">Time Filter</option>
+    <option value="day">Day</option>
+    <option value="week">Week</option>
+    <option value="month">Month</option>
+  </select>
+
+  <input type="date" name="value">
+
+  <select name="type">
+    <option value="">All Types</option>
+    <option value="income">Income</option>
+    <option value="expense">Expense</option>
+  </select>
+
+  <select name="category">
+    <option value="">All Categories</option>
+    {% for c in categories %}
+      <option value="{{ c }}">{{ c }}</option>
+    {% endfor %}
+  </select>
+
+  <input type="text" name="search" placeholder="Search...">
+
+  <button type="submit" class="btn primary">Apply</button>
+</form>
+
 <!-- Transactions card -->
 <div class="card">
   <div class="card-header">
@@ -59,6 +88,7 @@
         <td><span class="tag tag-blue">{{ t[3] }}</span></td>
         <td style="color: #64748b;">{{ t[4].strftime('%Y-%m-%d') }}</td>
         <td>{{ t[5] if t[5] else "-" }}</td>
+        <td><a href="/edit/{{ t[0] }}">Edit</a></td>
         <td><a href="/delete/{{ t[0] }}" class="btn-link-danger">Delete</a></td>
       </tr>
       {% endfor %}
@@ -85,6 +115,17 @@
         width: {{ [percent, 100]|min }}%;
         background: {% if percent > 100 %}#ef4444{% elif percent > 80 %}#f59e0b{% else %}#22c55e{% endif %};
       "></div>
+    </div>
+  {% endfor %}
+</div>
+
+<div class="card">
+  <h2>Taxes / Loans</h2>
+
+  {% for loan in loans %}
+    <div style="margin-bottom:10px;">
+      <strong>{{ loan[0] }}</strong><br>
+      RM {{ loan[1] }} remaining of RM {{ loan[2] }}
     </div>
   {% endfor %}
 </div>

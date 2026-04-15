@@ -2,14 +2,21 @@ from dotenv import load_dotenv
 import os
 from flask import Flask, render_template, request, session, redirect, url_for, jsonify, flash
 from flask_mysqldb import MySQL
+from werkzeug.utils import secure_filename
 import requests
 import bcrypt
 from datetime import datetime
+from decimal import Decimal
 
 load_dotenv(dotenv_path=".env")
 
+
+
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY")
+
+UPLOAD_FOLDER = 'static/uploads'
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 # SQL Login 
 app.config['MYSQL_HOST'] = os.getenv("DB_HOST")
@@ -78,6 +85,53 @@ def signup():
     return render_template("signup.html")
     return "server is running g"
 
+# ============== ROUTE FOR PROFILE PAGE ==============
+@app.route("/profile", methods=["GET", "POST"])
+def profile():
+    if "user_id" not in session:
+        flash("Please log in to access your dashboard.")
+        return redirect("/login")
+
+    cur = mysql.connection.cursor()
+
+    if request.method == "POST":
+        
+        file = request.files.get("profile_pic")
+
+        if file and file.filename != "":
+            import time
+            filename = str(time.time()) + "_" + secure_filename(file.filename)
+            filepath = os.path.join(app.config["UPLOAD_FOLDER"], filename)
+            file.save(filepath)
+
+            cur.execute("""
+                UPDATE users SET profile_pic = %s
+                WHERE id = %s
+                """, (filepath, session["user_id"]))
+
+            mysql.connection.commit()
+            flash("Profile picture updated successfully!", "success")
+
+    cur.execute("""
+         SELECT username, profile_pic 
+         FROM users 
+         WHERE id = %s
+    """, (session["user_id"],))
+
+    user = cur.fetchone()
+
+    cur.execute("""
+        SELECT name
+        FROM categories
+        WHERE user_id = %s
+    """, (session["user_id"],))
+
+    categories = cur.fetchall()
+
+    cur.close()
+
+    return render_template("profile.html", user=user, categories=categories)
+
 # ============== ROUTE FOR TRANSACTIONS PAGE ==============
 @app.route("/add", methods=["GET", "POST"])
 def add_transaction():
@@ -114,6 +168,54 @@ def add_transaction():
 
     return render_template("transactions.html", categories=categories)
 
+# ==================== ROUTE FOR EDITING TRANSACTIONS =====================
+@app.route("/edit/<int:id>", methods=["GET", "POST"])
+def edit_transaction(id):
+    if "user_id" not in session:
+        flash("Please log in to access your dashboard.")
+        return redirect("/login")
+
+    cur = mysql.connection.cursor()
+
+    if request.method == "POST":
+        amount = Decimal(request.form["amount"])
+        category = request.form["category"]
+        note = request.form.get("note")
+        
+        cur.execute("""
+            UPDATE transactions
+            SET amount = %s, category = %s, note = %s
+            WHERE id = %s AND user_id = %s
+        """, (amount, category, note, id, session["user_id"]))
+
+        mysql.connection.commit()
+        cur.close
+
+        flash("Transaction updated successfully", "success")
+        return redirect("/dashboard")
+
+    # get the current transaction
+    cur.execute("""
+        SELECT id, amount, type, category, note
+        FROM transactions
+        WHERE id = %s AND user_id = %s
+    """, (id, session["user_id"]))
+
+    t = cur.fetchone()
+
+    # get the categories n stuff
+    cur.execute("""
+        SELECT name FROM categories
+        WHERE user_id = %s
+    """, (session["user_id"],))
+
+    categories = [row[0] for row in cur.fetchall()]
+
+    cur.close()
+
+    return render_template("edit.html", t=t, categories=categories)
+
+
 # ==================== ROUTE FOR CATEGORY MANAGEMENT (EARLY PROFILE PAGE) ====================
 @app.route("/categories", methods=["GET", "POST"])
 def manage_categories():
@@ -142,6 +244,94 @@ def manage_categories():
 
     return render_template("categories.html", categories=categories)
 
+# ===================== ROUTE FOR TAXES =====================
+@app.route("/taxes", methods=["GET", "POST"])
+def taxes():
+    if "user_id" not in session:
+        flash("Please log in to access your dashboard.")
+        return redirect("/login")
+
+    cur = mysql.connection.cursor()
+    
+    if request.method == "POST":
+        name = request.form["name"]
+        amount = Decimal(request.form["amount"])
+
+        cur.execute("""
+            INSERT INTO loans (user_id, name, total_amount, remaining_amount, created_at) 
+            VALUES (%s, %s, %s, %s, CURDATE())
+        """, (session["user_id"], name, amount, amount))
+
+        mysql.connection.commit()
+        flash("Tax added successfully!", "success")
+
+    cur.execute("""
+        SELECT id, name, total_amount, remaining_amount
+        from loans
+        WHERE user_id = %s
+    """, (session["user_id"],))
+
+    loans = cur.fetchall()
+
+    cur.close()
+
+    return render_template("taxes.html", loans=loans)
+
+# ===================== ROUTE FOR PAYING TAXES =====================
+@app.route("/pay-tax", methods=["POST"])
+def pay_tax():
+    if "user_id" not in session:
+        flash("Please log in to access your dashboard.")
+        return redirect("/login")
+
+    loan_id = request.form["loan_id"]
+    amount = Decimal(request.form["amount"])
+    note = request.form.get("note", "")
+
+    cur = mysql.connection.cursor()
+
+    # get tax info
+    cur.execute("""
+        SELECT name, remaining_amount 
+        FROM loans 
+        WHERE id = %s AND user_id = %s
+    """, (loan_id, session["user_id"]))
+
+    loan = cur.fetchone()
+    
+    if not loan:
+        flash("Loan not found.", "danger")
+        return redirect("/taxes")
+
+    loan_name, remaining = loan
+
+    new_amount = max(Decimal("0.00"), remaining - amount)
+
+    # update tax info
+    cur.execute("""
+        UPDATE loans
+        SET remaining_amount = %s
+        WHERE id = %s
+        """, (new_amount, loan_id))
+
+    # lowkey insert into transactions
+    cur.execute("""
+        INSERT INTO transactions (user_id, amount, type, category, note)
+        VALUES (%s, %s, %s, %s, %s)
+    """, (
+        session["user_id"], 
+        amount, 
+        "expense", 
+        "Taxes payment",
+        f"Payment for {loan_name}. {note}"
+    ))
+
+    mysql.connection.commit()
+    cur.close()
+
+    flash("Taxes paid successfully!", "success")
+    return redirect("/taxes")
+
 # ===================== ROUTE FOR VIEWING DASHBOARD =====================
 @app.route("/dashboard")
 def dashboard():
@@ -149,26 +339,60 @@ def dashboard():
         flash("Please log in to access your dashboard.")
         return redirect("/login")
 
-    month = request.args.get("month")
-
     cur = mysql.connection.cursor()
 
-    if month:
-        cur.execute("""
-            SELECT id, amount, type, category, created_at, note
-            FROM transactions 
-            WHERE user_id = %s 
-            AND DATE_FORMAT(created_at, '%%Y-%%m') = %s
-            ORDER BY created_at DESC
-        """, (session["user_id"], month))
-    else:
-        cur.execute("""
-            SELECT id, amount, type, category, created_at, note
-            FROM transactions 
-            WHERE user_id = %s
-            ORDER BY created_at DESC
-        """, (session["user_id"],))
+    filter_type = request.args.get("filter")
+    value = request.args.get("value")
+    type_filter = request.args.get("type")
+    category_filter = request.args.get("category")
+    search = request.args.get("search")
 
+    query = """
+        SELECT id, amount, type, category, created_at, note
+        FROM transactions
+        WHERE user_id = %s
+    """
+
+    params = [session["user_id"]]
+
+    # time filter
+    if filter_type == "day" and value:
+        query += " AND DATE(created_at) = %s"
+        params.append(value)
+    elif filter_type == "month" and value:
+        query += " AND DATE_FORMAT(created_at, '%%Y-%m') = %s"
+        params.append(value)
+    elif filter_type == "week" and value:
+        query += " AND YEARWEEK(created_at, 1) = YEARWEEK(%s, 1)"
+        params.append(value)
+
+    # type filter
+    if type_filter:
+        query += " AND type = %s"
+        params.append(type_filter)
+
+    # category filter
+    if category_filter:
+        query += " AND category = %s"
+        params.append(category_filter)
+
+    # search feature
+    if search:
+        query += """
+        AND (
+            category LIKE %s OR
+            note LIKE %s OR
+            CAST(amount as CHAR) LIKE %s OR
+            DATE_FORMAT(created_at, '%%Y-%%m-%%d') LIKE %s
+        )
+        """
+
+        s = f"%{search}%"
+        params.extend([s, s, s, s])
+    
+    query += " ORDER BY created_at DESC"
+
+    cur.execute(query, tuple(params))
     transactions = cur.fetchall()
 
     total = sum([row[1] for row in transactions if row[2] == 'expense'])
@@ -191,6 +415,14 @@ def dashboard():
 
     category_totals = dict(cur.fetchall())
 
+    cur.execute("""
+        SELECT name, remaining_amount, total_amount
+        FROM loans
+        WHERE user_id = %s
+    """, (session["user_id"],))
+
+    loans = cur.fetchall()
+
 
     cur.execute("""
         SELECT category, SUM(amount)
@@ -200,6 +432,13 @@ def dashboard():
     """, (session["user_id"],))
 
     chart_data = cur.fetchall()
+
+    cur.execute("""
+        SELECT name FROM categories
+        WHERE user_id = %s
+    """, (session["user_id"],))
+
+    categories = [row[0] for row in cur.fetchall()]
 
     cur.close()
 
@@ -211,6 +450,8 @@ def dashboard():
         chart_data=chart_data,
         category_totals=category_totals,
         total_budget=total_budget,
+        loans=loans,
+        categories=categories
     )
 
 # ===================== ROUTE FOR DELETING TRANSACTIONS =====================
@@ -278,8 +519,8 @@ def analysis():
 
     for category, amount in data:
         if category in budgets:
-            limit = float(budgets[category])
-            amount = float(amount)
+            limit = Decimal(budgets[category])
+            amount = Decimal(amount)
 
             ratio = amount / limit
 
@@ -464,6 +705,40 @@ def delete_budget(category):
     cur.close()
 
     return redirect("/budget")
+
+# ==================== ROUTE FOR EDITING BUDGETS =======================
+@app.route("/edit-budget/<category>", methods=["GET", "POST"])
+def edit_budget(category):
+    if "user_id" not in session:
+        return redirect("/login")
+
+    cur = mysql.connection.cursor()
+
+    if request.method == "POST":
+        new_limit = Decimal(request.form["limit"])
+
+        cur.execute("""
+            UPDATE budgets
+            SET limit_amount = %s
+            WHERE user_id = %s AND category = %s
+        """, (new_limit, session["user_id"], category))
+
+        mysql.connection.commit()
+        cur.close()
+
+        flash("Budget Updated Successfully!", "success")
+        return redirect("/budget")
+
+    cur.execute("""
+        SELECT category, limit_amount
+        FROM budgets
+        WHERE user_id = %s AND category = %s
+        """, (session["user_id"], category))
+
+    budget = cur.fetchone()
+    cur.close
+
+    return render_template("edit_budget.html", budget=budget)
 
 
 # ===================== ROUTE FOR AI-AVAILAIBILITY CHECK =====================

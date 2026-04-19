@@ -26,12 +26,14 @@
       <h2>Your Budgets</h2>
       <span style="font-size: 12px; color: var(--muted);">{{ budgets|length }} categories</span>
     </div>
+
     {% if budgets %}
     <table>
       <thead>
         <tr>
           <th>Category</th>
           <th>Limit</th>
+          <th style="text-align: right;">Actions</th>
         </tr>
       </thead>
       
@@ -40,14 +42,25 @@
         <tr>
           <td><span class="tag tag-blue">{{ b[0] }}</span></td>
           <td style="font-family: 'DM Mono', monospace; font-weight: 500;">RM {{ b[1] }}</td>
-          <td>
-    <a href="/delete-budget/{{ b[0] }}">Delete</a>
-    <a href="/edit-budget/{{ b[0] }}">Edit</a>
-</td>
+          <td style="text-align: right; white-space: nowrap;">
+
+            <a href="/edit-budget/{{ b[0] }}" 
+               style="margin-right:10px; color: #2563eb; font-weight: 500; text-decoration: none;">
+               Edit
+            </a>
+
+            <a href="/delete-budget/{{ b[0] }}" 
+               onclick="return confirm('Delete this budget?')"
+               style="color: #ef4444; font-weight: 500; text-decoration: none;">
+               Delete
+            </a>
+
+          </td>
         </tr>
         {% endfor %}
       </tbody>
     </table>
+
     {% else %}
     <p style="color: var(--muted); font-size: 13px; text-align: center; padding: 24px 0;">
       No budgets set yet.

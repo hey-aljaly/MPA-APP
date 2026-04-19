@@ -3,7 +3,7 @@
 
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
 
-  <!-- Add Loan/Tax -->
+  <!-- Add Entry -->
   <div class="card">
     <div class="card-header">
       <h2>Add Entry</h2>
@@ -11,11 +11,15 @@
     <form method="POST">
       <div class="form-group">
         <label>Who / What</label>
-        <input type="text" name="name" placeholder="e.g. Friend, Bank, Gadoora" required>
+        <input type="text" name="name" placeholder="e.g. Friend, Bank, LHDN" required>
       </div>
       <div class="form-group">
         <label>Amount Owed (RM)</label>
         <input type="number" step="0.01" name="amount" placeholder="0.00" required>
+      </div>
+      <div class="form-group">
+        <label>Notes</label>
+        <input type="text" name="note" placeholder="Optional note">
       </div>
       <button type="submit" class="btn primary" style="width: 100%; justify-content: center;">
         Add Entry
@@ -23,11 +27,11 @@
     </form>
   </div>
 
-  <!-- Loans/Taxes List -->
+  <!-- Active Loans -->
   <div class="card">
     <div class="card-header">
-      <h2>Taxes / Loans</h2>
-      <span style="font-size: 12px; color: var(--muted);">{{ loans|length }} entries</span>
+      <h2>Active Loans / Taxes</h2>
+      <span style="font-size: 12px; color: var(--muted);">{{ loans|length }} active</span>
     </div>
 
     {% if loans %}
@@ -37,52 +41,77 @@
           <th>Name</th>
           <th>Remaining</th>
           <th>Total</th>
+          <th>Pay</th>
         </tr>
       </thead>
       <tbody>
         {% for loan in loans %}
-        {% set percent = ((loan[2] - loan[3]) / loan[2] * 100) if loan[2] > 0 else 0 %}
-        
+        {% set paid = loan[2] - loan[3] %}
+        {% set percent = (paid / loan[2] * 100) if loan[2] > 0 else 0 %}
         <tr>
           <td style="font-weight: 500;">{{ loan[1] }}</td>
-          <td>
-            <span style="font-family: 'DM Mono', monospace;">RM {{ loan[3] }}</span>
-          </td>
+          <td style="font-family: 'DM Mono', monospace;">RM {{ loan[3] }}</td>
           <td style="color: var(--muted); font-family: 'DM Mono', monospace;">RM {{ loan[2] }}</td>
+          <td>
+            <form method="POST" action="/pay-tax" style="display: flex; gap: 6px; align-items: center;">
+              <input type="hidden" name="loan_id" value="{{ loan[0] }}">
+              <input type="number" step="0.01" name="amount" placeholder="0.00" required style="width: 90px;">
+              <button type="submit" class="btn primary">Pay</button>
+            </form>
+          </td>
         </tr>
-
         <tr>
-          <td colspan="3" style="padding-top: 0; padding-bottom: 12px; border-bottom: 1px solid var(--border);">
-
-            <!-- Progress Bar -->
-            <div class="progress-wrap" style="margin-bottom: 10px;">
+          <td colspan="4" style="padding-top: 0; padding-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 4px;">
+              <span>{{ percent | round(1) }}% paid</span>
+              <span>RM {{ paid }} paid</span>
+            </div>
+            <div class="progress-wrap" style="margin-bottom: 0;">
               <div class="progress-bar" style="
                 width: {{ percent }}%;
                 background: {% if percent >= 100 %}var(--green){% elif percent > 50 %}var(--accent){% else %}var(--amber){% endif %};
               "></div>
             </div>
-
-            <!-- ✅ UPDATED PAY FORM -->
-            <form method="POST" action="/pay-tax" style="display:flex; gap:8px;">
-              <input type="hidden" name="loan_id" value="{{ loan[0] }}">
-              <input type="number" step="0.01" name="amount" placeholder="Amount to pay" required style="flex:1;">
-              <input type="text" name="note" placeholder="Optional note" style="flex:1;">
-              <button type="submit" class="btn primary">Pay</button>
-            </form>
-
           </td>
         </tr>
-
         {% endfor %}
       </tbody>
     </table>
     {% else %}
     <p style="color: var(--muted); font-size: 13px; text-align: center; padding: 24px 0;">
-      No entries yet. Add a loan or tax above.
+      No active loans or taxes.
     </p>
     {% endif %}
   </div>
 
 </div>
+
+<!-- Paid History -->
+{% if tax_history %}
+<div class="card" style="margin-top: 4px;">
+  <div class="card-header">
+    <h2>Paid History</h2>
+    <span class="tag tag-green">{{ tax_history|length }} completed</span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>Total Paid</th>
+        <th>Note</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for h in tax_history %}
+      <tr>
+        <td style="font-weight: 500;">{{ h[0] }}</td>
+        <td style="font-family: 'DM Mono', monospace;">RM {{ h[1] }}</td>
+        <td style="color: var(--muted);">{{ h[2] if h[2] else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
 
 {% endblock %}

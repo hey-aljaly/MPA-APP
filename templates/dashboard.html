@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 {% block content %}
 
-<!-- Stat summary row -->
+<!-- Stat Row -->
 <div class="stat-grid">
   <div class="stat">
-    <div class="stat-label">Total spent</div>
+    <div class="stat-label">Total Spent</div>
     <div class="stat-value">RM {{ total }}</div>
   </div>
   <div class="stat">
@@ -13,124 +13,180 @@
       {% if request.args.get('month') %}{{ request.args.get('month') }}{% else %}All time{% endif %}
     </div>
   </div>
+  <div class="stat">
+    <div class="stat-label">Total Budget</div>
+    <div class="stat-value">RM {{ total_budget }}</div>
+  </div>
+  <div class="stat" onclick="document.getElementById('loans-section').scrollIntoView({behavior: 'smooth'})" style="cursor: pointer;">
+    <div class="stat-label">Loans Remaining</div>
+    <div class="stat-value" style="color: var(--amber-text);">
+      RM {{ loans | sum(attribute=1) | round(2) }}
+    </div>
+  </div>
 </div>
 
-<form method="GET" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:15px;">
-
-  <select name="filter">
-    <option value="">Time Filter</option>
-    <option value="day">Day</option>
-    <option value="week">Week</option>
-    <option value="month">Month</option>
-  </select>
-
-  <input type="date" name="value">
-
-  <select name="type">
-    <option value="">All Types</option>
-    <option value="income">Income</option>
-    <option value="expense">Expense</option>
-  </select>
-
-  <select name="category">
-    <option value="">All Categories</option>
-    {% for c in categories %}
-      <option value="{{ c }}">{{ c }}</option>
-    {% endfor %}
-  </select>
-
-  <input type="text" name="search" placeholder="Search...">
-
-  <button type="submit" class="btn primary">Apply</button>
-</form>
-
-<!-- Transactions card -->
+<!-- Transactions -->
 <div class="card">
   <div class="card-header">
     <h2>Your Transactions</h2>
-    {% if request.args.get('month') %}
-    <span style="font-size: 12px; padding: 4px 10px; background: #eff6ff; color: #2563eb; border-radius: 6px; font-weight: 500;">
-      {{ request.args.get('month') }}
-    </span>
+    {% if request.args.get('filter') or request.args.get('category') or request.args.get('search') or request.args.get('value') %}
+      <a href="/dashboard" class="tag tag-red" style="text-decoration: none;">Clear filters</a>
     {% endif %}
   </div>
 
-  <div class="filter-row">
-    <form method="GET" style="display: flex; align-items: center; gap: 8px; margin: 0;">
-      <input type="month" name="month" value="{{ request.args.get('month', '') }}">
-      <button type="submit" class="btn primary">Filter</button>
-      <a href="/dashboard" style="font-size: 13px; color: #ef4444; font-weight: 500; text-decoration: none;">Reset</a>
-    </form>
+  <form method="GET" style="display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px;">
+    <select name="filter">
+      <option value="">Time filter</option>
+      <option value="day"   {% if request.args.get('filter')=='day'   %}selected{% endif %}>Day</option>
+      <option value="week"  {% if request.args.get('filter')=='week'  %}selected{% endif %}>Week</option>
+      <option value="month" {% if request.args.get('filter')=='month' %}selected{% endif %}>Month</option>
+    </select>
+    <input type="date" name="value" value="{{ request.args.get('value', '') }}" style="color-scheme: dark;">
+    <select name="category">
+      <option value="">All categories</option>
+      {% for c in categories %}
+      <option value="{{ c }}" {% if request.args.get('category')==c %}selected{% endif %}>{{ c }}</option>
+      {% endfor %}
+    </select>
+    <input type="text" name="search" placeholder="Search..." value="{{ request.args.get('search', '') }}" style="flex: 1; min-width: 140px;">
+    <button type="submit" class="btn primary">Apply</button>
+  </form>
+
+  {% if grouped_transactions %}
+    {% for date, items in grouped_transactions.items() %}
+
+      {% set daily_total = namespace(val=0) %}
+      {% for t in items %}
+        {% set daily_total.val = daily_total.val + t[1] %}
+      {% endfor %}
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin: 16px 0 8px;">
+        <span style="font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px;">
+          {{ date }}
+        </span>
+        <span style="font-size: 12px; font-family: 'DM Mono', monospace; color: var(--muted);">
+          RM {{ daily_total.val }}
+        </span>
+      </div>
+
+      {% for t in items %}
+      <div style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); margin-bottom: 6px; background: var(--bg3);">
+        <div style="flex: 1;">
+          <div style="font-size: 13px; font-weight: 500; color: var(--text);">{{ t[3] }}</div>
+          {% if t[5] %}
+          <div style="font-size: 11px; color: var(--muted); margin-top: 2px;">{{ t[5] }}</div>
+          {% endif %}
+        </div>
+        <span class="tag {% if t[2] == 'expense' %}tag-red{% else %}tag-green{% endif %}">{{ t[2] }}</span>
+        <span style="font-family: 'DM Mono', monospace; font-size: 13px; font-weight: 500; min-width: 80px; text-align: right;">
+          RM {{ t[1] }}
+        </span>
+        <div style="display: flex; gap: 8px;">
+          <a href="/edit/{{ t[0] }}" style="font-size: 12px; color: var(--blue-text); text-decoration: none; font-weight: 500;">Edit</a>
+          <a href="/delete/{{ t[0] }}" class="btn-link-danger" style="font-size: 12px;">Delete</a>
+        </div>
+      </div>
+      {% endfor %}
+
+    {% endfor %}
+  {% else %}
+  <p style="color: var(--muted); font-size: 13px; text-align: center; padding: 32px 0;">
+    No transactions found.
+  </p>
+  {% endif %}
+</div>
+
+<!-- Budget Usage -->
+<div class="card">
+  <div class="card-header">
+    <h2>Budget Usage</h2>
+    {% set budget_spent = namespace(total=0) %}
+    {% for category, limit in budgets.items() %}
+      {% set budget_spent.total = budget_spent.total + category_totals.get(category, 0) %}
+    {% endfor %}
+    {% set left = total_budget - budget_spent.total %}
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <span style="font-size: 12px; color: var(--muted);">
+        Total set: <span style="font-family: 'DM Mono', monospace; color: var(--text);">RM {{ total_budget }}</span>
+      </span>
+      <span style="font-size: 12px; color: var(--muted);">
+        Left: <span style="font-family: 'DM Mono', monospace; color: {% if left < 0 %}var(--red-text){% elif left == 0 %}var(--amber-text){% else %}var(--green-text){% endif %};">
+          RM {{ left | round(2) }}
+        </span>
+      </span>
+    </div>
+  </div>
+
+  {% if budgets %}
+    {% for category, limit in budgets.items() %}
+      {% set spent = category_totals.get(category, 0) %}
+      {% set percent = (spent / limit * 100) if limit > 0 else 0 %}
+      <div class="progress-label">
+        <span>{{ category }}</span>
+        <span>RM {{ spent }} / RM {{ limit }}</span>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-bar" style="
+          width: {{ [percent, 100]|min }}%;
+          background: {% if percent > 100 %}var(--red){% elif percent > 80 %}var(--amber){% else %}var(--green){% endif %};
+        "></div>
+      </div>
+    {% endfor %}
+  {% else %}
+    <p style="color: var(--muted); font-size: 13px; text-align: center; padding: 16px 0;">No budgets set.</p>
+  {% endif %}
+</div>
+
+<!-- Loans / Taxes -->
+{% if loans %}
+<div class="card" id="loans-section">
+  <div class="card-header">
+    <h2>Taxes / Loans</h2>
+    <div style="display: flex; align-items: center; gap: 12px;">
+      <span style="font-size: 12px; color: var(--muted);">
+        Total: <span style="font-family: 'DM Mono', monospace; color: var(--amber-text);">
+          RM {{ loans | sum(attribute=1) | round(2) }}
+        </span>
+      </span>
+      <a href="/taxes" style="font-size: 12px; color: var(--blue-text); text-decoration: none; font-weight: 500;">View all →</a>
+    </div>
   </div>
 
   <table>
     <thead>
       <tr>
-        <th>Amount</th>
-        <th>Type</th>
-        <th>Category</th>
-        <th>Date</th>
-        <th>Note</th>
-        <th>Action</th>
+        <th>Name</th>
+        <th>Remaining</th>
+        <th>Total</th>
+        <th>Progress</th>
       </tr>
     </thead>
     <tbody>
-      {% for t in transactions %}
+      {% for loan in loans %}
+      {% set percent = ((loan[2] - loan[1]) / loan[2] * 100) if loan[2] > 0 else 0 %}
       <tr>
-        <td style="font-weight: 500;">RM {{ t[1] }}</td>
-        <td>
-          {% if t[2] == 'expense' %}
-            <span class="tag tag-red">{{ t[2] }}</span>
-          {% else %}
-            <span class="tag tag-green">{{ t[2] }}</span>
-          {% endif %}
+        <td style="font-weight: 500;">{{ loan[0] }}</td>
+        <td style="font-family: 'DM Mono', monospace; color: var(--amber-text);">RM {{ loan[1] }}</td>
+        <td style="font-family: 'DM Mono', monospace; color: var(--muted);">RM {{ loan[2] }}</td>
+        <td style="min-width: 120px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div class="progress-wrap" style="flex: 1; margin-bottom: 0;">
+              <div class="progress-bar" style="
+                width: {{ percent }}%;
+                background: {% if percent >= 100 %}var(--green){% elif percent > 50 %}var(--accent){% else %}var(--amber){% endif %};
+              "></div>
+            </div>
+            <span style="font-size: 11px; color: var(--muted); min-width: 32px;">{{ percent | round(0) | int }}%</span>
+          </div>
         </td>
-        <td><span class="tag tag-blue">{{ t[3] }}</span></td>
-        <td style="color: #64748b;">{{ t[4].strftime('%Y-%m-%d') }}</td>
-        <td>{{ t[5] if t[5] else "-" }}</td>
-        <td><a href="/edit/{{ t[0] }}">Edit</a></td>
-        <td><a href="/delete/{{ t[0] }}" class="btn-link-danger">Delete</a></td>
       </tr>
       {% endfor %}
     </tbody>
   </table>
 </div>
+{% endif %}
 
-<!-- Budget usage card -->
-<div class="card">
-  <div class="card-header">
-    <h2>Budget Usage</h2>
-    <h3>Total Budget: RM {{ total_budget }}</h3>
-  </div>
-
-  {% for category, limit in budgets.items() %}
-    {% set spent = category_totals.get(category, 0) %}
-    {% set percent = (spent / limit * 100) if limit > 0 else 0 %}
-    <div class="progress-label">
-      <span>{{ category }}</span>
-      <span>RM {{ spent }} / RM {{ limit }}</span>
-    </div>
-    <div class="progress-wrap">
-      <div class="progress-bar" style="
-        width: {{ [percent, 100]|min }}%;
-        background: {% if percent > 100 %}#ef4444{% elif percent > 80 %}#f59e0b{% else %}#22c55e{% endif %};
-      "></div>
-    </div>
-  {% endfor %}
-</div>
-
-<div class="card">
-  <h2>Taxes / Loans</h2>
-
-  {% for loan in loans %}
-    <div style="margin-bottom:10px;">
-      <strong>{{ loan[0] }}</strong><br>
-      RM {{ loan[1] }} remaining of RM {{ loan[2] }}
-    </div>
-  {% endfor %}
-</div>
-
-<!-- Chart card -->
+<!-- Chart -->
 <div class="card">
   <div class="card-header">
     <h2>Spending by Category</h2>
@@ -147,13 +203,16 @@ new Chart(document.getElementById('myChart'), {
     datasets: [{
       label: 'Spending',
       data: [{% for c in chart_data %}{{ c[1] }},{% endfor %}],
-      backgroundColor: ['#2563eb','#16a34a','#d97706','#dc2626','#7c3aed','#0891b2'],
+      backgroundColor: ['#3b82f6','#22c55e','#f59e0b','#ef4444','#8b5cf6','#06b6d4','#ec4899','#14b8a6'],
       borderWidth: 0,
     }]
   },
   options: {
     plugins: {
-      legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 16 } }
+      legend: {
+        position: 'bottom',
+        labels: { color: '#6b7a99', font: { size: 12 }, padding: 16 }
+      }
     }
   }
 });

@@ -36,29 +36,28 @@
     </form>
   </div>
 
-  <!-- Categories -->
-  <div class="card">
-    <div class="card-header">
-      <h2>Your Categories</h2>
-      <span style="font-size: 12px; color: var(--muted);">{{ categories|length }} total</span>
-    </div>
-
-    {% if categories %}
-    <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;">
-      {% for c in categories %}
-        <span class="tag tag-blue">{{ c[0] }}</span>
-      {% endfor %}
-    </div>
-    {% else %}
-    <p style="color: var(--muted); font-size: 13px; margin-bottom: 20px;">No categories yet.</p>
-    {% endif %}
-
-    <form method="POST" action="/categories" style="display: flex; gap: 8px;">
-      <input type="text" name="name" placeholder="New category..." required style="flex: 1;">
-      <button type="submit" class="btn primary">Add</button>
-    </form>
+<!-- Categories -->
+<div class="card">
+  <div class="card-header">
+    <h2>Your Categories</h2>
+    <span style="font-size: 12px; color: var(--muted);">{{ categories|length }} total</span>
   </div>
 
+  {% if categories %}
+  <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;">
+    {% for c in categories %}
+    <span class="tag tag-blue">{{ c[0] }}</span>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p style="color: var(--muted); font-size: 13px; margin-bottom: 20px;">No categories yet.</p>
+  {% endif %}
+
+  <form method="POST" action="/categories" style="display: flex; gap: 8px;">
+    <input type="text" name="name" placeholder="New category..." required style="flex: 1;">
+    <button type="submit" class="btn primary">Add</button>
+    <a href="/categories" class="btn">Manage →</a>
+  </form>
 </div>
 
 {% endblock %}

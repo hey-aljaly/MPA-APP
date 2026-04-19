@@ -13,10 +13,15 @@
 
     <div class="form-group">
       <label>Category</label>
+    {% if is_tax_payment %}
+      <input type="text" name="category" value="Taxes payment">
+    {% else %}
       <select name="category">
         {% for c in categories %}
           <option value="{{ c }}" {% if c == t[3] %}selected{% endif %}>{{ c }}</option>
         {% endfor %}
+      </select>
+    {% endif %}
       </select>
     </div>
 

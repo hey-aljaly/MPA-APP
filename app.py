@@ -7,10 +7,9 @@ import requests
 import bcrypt
 from datetime import datetime
 from decimal import Decimal
+from collections import defaultdict
 
 load_dotenv(dotenv_path=".env")
-
-
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY")
@@ -144,17 +143,43 @@ def add_transaction():
 
     if request.method == "POST":
         amount = request.form["amount"]
-        t_type = request.form["type"]
         category = request.form["category"]
         note = request.form.get("note")
+        date = request.form.get("date")
 
-        cur.execute(
-            "INSERT INTO transactions (user_id, amount, type, category, note) VALUES (%s, %s, %s, %s, %s)", 
-            (session["user_id"], amount, t_type, category, note)
-            )
-        mysql.connection.commit()
+        try:
+            if date:
+                full_date = date + " 00:00:00"
+                cur.execute("""
+                    INSERT INTO transactions (user_id, amount, type, category, note, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                """, (
+                    session["user_id"],
+                    amount,
+                    "expense",
+                    category,
+                    note,
+                    date
+                ))
+            else:
+                cur.execute("""
+                    INSERT INTO transactions (user_id, amount, type, category, note) 
+                    VALUES (%s, %s, %s, %s, %s) 
+                """, (
+                session["user_id"], 
+                amount, 
+                "expense", 
+                category, 
+                note
+            ))
 
-        flash("Transaction added successfully!", "success")
+            mysql.connection.commit()
+
+            flash("Transaction added successfully!", "success")
+        except Exception as e:
+            print("ERROR:", e)
+            flash("Something unexpected happened.", "error")
+
 
         return redirect(url_for("add_transaction"))
 
@@ -179,7 +204,7 @@ def edit_transaction(id):
 
     if request.method == "POST":
         amount = Decimal(request.form["amount"])
-        category = request.form["category"]
+        category = request.form.get("category")
         note = request.form.get("note")
         
         cur.execute("""
@@ -203,7 +228,9 @@ def edit_transaction(id):
 
     t = cur.fetchone()
 
-    # get the categories n stuff
+    is_tax_payment = (t[3] == "Taxes payment")
+
+    # get the categories n stufff
     cur.execute("""
         SELECT name FROM categories
         WHERE user_id = %s
@@ -213,7 +240,7 @@ def edit_transaction(id):
 
     cur.close()
 
-    return render_template("edit.html", t=t, categories=categories)
+    return render_template("edit.html", t=t, categories=categories, is_tax_payment=is_tax_payment)
 
 
 # ==================== ROUTE FOR CATEGORY MANAGEMENT (EARLY PROFILE PAGE) ====================
@@ -226,13 +253,24 @@ def manage_categories():
     cur = mysql.connection.cursor()
 
     if request.method == "POST":
-        name = request.form["name"]
+        name = request.form["name"].lower()
 
-        cur.execute(
-            "INSERT INTO categories (user_id, name) VALUES (%s, %s)",
-            (session["user_id"], name)
-        )
-        mysql.connection.commit()
+        # check if the category is already in the db
+        cur.execute("""
+            SELECT * FROM categories
+            WHERE user_id = %s AND LOWER(name) = %s
+        """, (session["user_id"], name))
+
+        existing = cur.fetchone()
+
+        if existing:
+            flash("Category already exists!", "error")
+        else:
+            cur.execute(
+                "INSERT INTO categories (user_id, name) VALUES (%s, %s)",
+                (session["user_id"], name)
+            )
+            mysql.connection.commit()
 
     cur.execute(
         "SELECT name FROM categories WHERE user_id = %s",
@@ -244,6 +282,25 @@ def manage_categories():
 
     return render_template("categories.html", categories=categories)
 
+# ===================== ROUTE FOR DELETING CATEGORIES =========================
+@app.route("/delete-category/<name>")
+def delete_category(name):
+    if "user_id" not in session:
+        return redirect ("/login")
+
+    cur = mysql.connection.cursor()
+
+    # delete category
+    cur.execute("""
+        DELETE FROM categories
+        WHERE user_id = %s AND name = %s
+    """, (session["user_id"], name))
+
+    mysql.connection.commit()
+    cur.close()
+
+    flash("Category deleted successfully!", "success")
+    return redirect("/categories")
 # ===================== ROUTE FOR TAXES =====================
 @app.route("/taxes", methods=["GET", "POST"])
 def taxes():
@@ -256,6 +313,7 @@ def taxes():
     if request.method == "POST":
         name = request.form["name"]
         amount = Decimal(request.form["amount"])
+        note = request.form.get("note")
 
         cur.execute("""
             INSERT INTO loans (user_id, name, total_amount, remaining_amount, created_at) 
@@ -268,14 +326,23 @@ def taxes():
     cur.execute("""
         SELECT id, name, total_amount, remaining_amount
         from loans
-        WHERE user_id = %s
+        WHERE user_id = %s AND status = 'active'
     """, (session["user_id"],))
 
     loans = cur.fetchall()
 
+    # show taxes history
+    cur.execute("""
+        SELECT name, total_amount, note
+        FROM loans
+        WHERE user_id = %s AND status = 'paid'
+    """, (session["user_id"],))
+
+    tax_history = cur.fetchall()
+
     cur.close()
 
-    return render_template("taxes.html", loans=loans)
+    return render_template("taxes.html", loans=loans, tax_history=tax_history)
 
 # ===================== ROUTE FOR PAYING TAXES =====================
 @app.route("/pay-tax", methods=["POST"])
@@ -286,7 +353,6 @@ def pay_tax():
 
     loan_id = request.form["loan_id"]
     amount = Decimal(request.form["amount"])
-    note = request.form.get("note", "")
 
     cur = mysql.connection.cursor()
 
@@ -307,11 +373,19 @@ def pay_tax():
 
     new_amount = max(Decimal("0.00"), remaining - amount)
 
-    # update tax info
-    cur.execute("""
-        UPDATE loans
-        SET remaining_amount = %s
-        WHERE id = %s
+
+    # check if tax is already paid off
+    if new_amount == Decimal("0.00"):
+        cur.execute("""
+            UPDATE loans
+            SET remaining_amount = %s, status = 'paid'
+            WHERE id = %s
+        """, (new_amount, loan_id))
+    else:
+        cur.execute("""
+            UPDATE loans
+            SET remaining_amount = %s
+            WHERE id = %s
         """, (new_amount, loan_id))
 
     # lowkey insert into transactions
@@ -395,6 +469,13 @@ def dashboard():
     cur.execute(query, tuple(params))
     transactions = cur.fetchall()
 
+    grouped = defaultdict(list)
+
+    for t in transactions:
+        date = t[4].date()
+        grouped[date].append(t)
+    
+
     total = sum([row[1] for row in transactions if row[2] == 'expense'])
 
     cur.execute("""
@@ -415,10 +496,11 @@ def dashboard():
 
     category_totals = dict(cur.fetchall())
 
+    # show taxes
     cur.execute("""
         SELECT name, remaining_amount, total_amount
         FROM loans
-        WHERE user_id = %s
+        WHERE user_id = %s AND status = 'active'
     """, (session["user_id"],))
 
     loans = cur.fetchall()
@@ -451,7 +533,8 @@ def dashboard():
         category_totals=category_totals,
         total_budget=total_budget,
         loans=loans,
-        categories=categories
+        categories=categories,
+        grouped_transactions=grouped
     )
 
 # ===================== ROUTE FOR DELETING TRANSACTIONS =====================
@@ -704,6 +787,7 @@ def delete_budget(category):
     mysql.connection.commit()
     cur.close()
 
+    flash("Budget removed!", "success")
     return redirect("/budget")
 
 # ==================== ROUTE FOR EDITING BUDGETS =======================

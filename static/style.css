@@ -466,6 +466,11 @@ canvas {
   to   { opacity: 0; transform: translateX(40px); }
 }
 
+/* ===== PROGRESS BAR COLORS ===== */
+.progress-bar         { background: var(--green); }
+.progress-bar.warn    { background: var(--amber); }
+.progress-bar.danger  { background: var(--red); }
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
 

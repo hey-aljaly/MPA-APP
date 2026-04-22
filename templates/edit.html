@@ -1,37 +1,42 @@
 {% extends "base.html" %}
 {% block content %}
 
-<div class="card" style="max-width: 500px; margin:auto;">
-  <h2>Edit Transaction</h2>
-
+<div class="card" style="max-width: 500px; margin: auto;">
+  <div class="card-header">
+    <h2>Edit Transaction</h2>
+  </div>
   <form method="POST">
-
     <div class="form-group">
-      <label>Amount</label>
+      <label>Amount (RM)</label>
       <input type="number" step="0.01" name="amount" value="{{ t[1] }}" required>
     </div>
 
     <div class="form-group">
       <label>Category</label>
-    {% if is_tax_payment %}
-      <input type="text" name="category" value="Taxes payment">
-    {% else %}
-      <select name="category">
-        {% for c in categories %}
-          <option value="{{ c }}" {% if c == t[3] %}selected{% endif %}>{{ c }}</option>
-        {% endfor %}
-      </select>
-    {% endif %}
-      </select>
+      {% if is_tax_payment %}
+        <input type="text" name="category" value="Taxes payment" readonly>
+      {% else %}
+        <select name="category">
+          {% for c in categories %}
+          <option value="{{ c }}" {% if c == t[3] %}selected{% endif %}>{{ c | title }}</option>
+          {% endfor %}
+        </select>
+      {% endif %}
     </div>
 
     <div class="form-group">
-      <label>Note</label>
-      <input type="text" name="note" value="{{ t[4] }}">
+      <label>Date</label>
+      <input type="date" name="date" value="{{ t[4].strftime('%Y-%m-%d') if t[4] else '' }}" style="width: 100%; color-scheme: dark;">
     </div>
 
-    <button type="submit" class="btn primary">Save Changes</button>
+    <div class="form-group">
+      <label>Note <span style="color: var(--muted); font-weight: 400;">(optional)</span></label>
+      <input type="text" name="note" value="{{ t[5] if t[5] else '' }}">
+    </div>
 
+    <button type="submit" class="btn primary" style="width: 100%; justify-content: center;">
+      Save Changes
+    </button>
   </form>
 </div>
 

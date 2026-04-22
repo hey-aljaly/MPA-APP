@@ -40,7 +40,7 @@
       <tbody>
         {% for b in budgets %}
         <tr>
-          <td><span class="tag tag-blue">{{ b[0] }}</span></td>
+          <td><span class="tag tag-blue">{{ b[0].title() }}</span></td>
           <td style="font-family: 'DM Mono', monospace; font-weight: 500;">RM {{ b[1] }}</td>
           <td style="text-align: right; white-space: nowrap;">
 

@@ -143,7 +143,7 @@ def add_transaction():
 
     if request.method == "POST":
         amount = request.form["amount"]
-        category = request.form["category"]
+        category = request.form["category"].lower()
         note = request.form.get("note")
         date = request.form.get("date")
 
@@ -205,13 +205,14 @@ def edit_transaction(id):
     if request.method == "POST":
         amount = Decimal(request.form["amount"])
         category = request.form.get("category")
+        date = request.form.get("date")
         note = request.form.get("note")
         
         cur.execute("""
             UPDATE transactions
-            SET amount = %s, category = %s, note = %s
+            SET amount = %s, category = %s, created_at = %s, note = %s
             WHERE id = %s AND user_id = %s
-        """, (amount, category, note, id, session["user_id"]))
+        """, (amount, category, date, note, id, session["user_id"]))
 
         mysql.connection.commit()
         cur.close
@@ -221,7 +222,7 @@ def edit_transaction(id):
 
     # get the current transaction
     cur.execute("""
-        SELECT id, amount, type, category, note
+        SELECT id, amount, type, category, created_at ,note
         FROM transactions
         WHERE id = %s AND user_id = %s
     """, (id, session["user_id"]))
@@ -754,7 +755,7 @@ def budget():
     cur = mysql.connection.cursor()
 
     if request.method == "POST":
-        category = request.form["category"]
+        category = request.form["category"].lower()
         limit = request.form["limit"]
 
         cur.execute("""

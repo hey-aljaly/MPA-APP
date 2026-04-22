@@ -67,12 +67,9 @@
               <span>RM {{ paid }} paid</span>
             </div>
             <div class="progress-wrap" style="margin-bottom: 0;">
-              {% set percent = ((loan[2] - loan[3]) / loan[2] * 100) if loan[2] > 0 else 0 %}
-              {% set is_overpaid = loan[3] < 0 %}
-
               <div class="progress-bar" style="
-                width: {{ [percent, 100]|min }}%;
-                background: {% if is_overpaid %}var(--red){% elif percent >= 100 %}var(--green){% else %}var(--amber){% endif %};
+                width: {{ percent }}%;
+                background: {% if percent >= 100 %}var(--green){% elif percent > 50 %}var(--accent){% else %}var(--amber){% endif %};
               "></div>
             </div>
           </td>

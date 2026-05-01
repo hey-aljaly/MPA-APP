@@ -1,20 +1,36 @@
 {% extends "base.html" %}
 {% block content %}
+
 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
 
   <div class="card">
     <div class="card-header">
       <h2>Set Budget</h2>
     </div>
+
     <form method="POST">
       <div class="form-group">
-        <label>Category</label>
-        <input type="text" name="category" placeholder="e.g. Food, Transport..." required>
+        <label>Budget Name</label>
+        <input type="text" name="category" placeholder="e.g. Food / Drinks" required>
       </div>
+
       <div class="form-group">
-        <label>Monthly limit (RM)</label>
+        <label>Monthly Limit (RM)</label>
         <input type="number" step="0.01" name="limit" placeholder="0.00" required>
       </div>
+
+      <div class="form-group">
+        <label>Categories Included</label>
+        <select name="categories" multiple required style="height: 140px;">
+          {% for c in categories %}
+            <option value="{{ c }}">{{ c | title }}</option>
+          {% endfor %}
+        </select>
+        <small style="color: var(--muted); font-size: 12px;">
+          Hold CTRL / CMD to select multiple categories.
+        </small>
+      </div>
+
       <button type="submit" class="btn primary" style="width: 100%; justify-content: center;">
         Save Budget
       </button>
@@ -24,37 +40,51 @@
   <div class="card">
     <div class="card-header">
       <h2>Your Budgets</h2>
-      <span style="font-size: 12px; color: var(--muted);">{{ budgets|length }} categories</span>
+      <span style="font-size: 12px; color: var(--muted);">{{ budgets|length }} budgets</span>
     </div>
 
     {% if budgets %}
     <table>
       <thead>
         <tr>
-          <th>Category</th>
+          <th>Budget</th>
           <th>Limit</th>
+          <th>Includes</th>
           <th style="text-align: right;">Actions</th>
         </tr>
       </thead>
-      
+
       <tbody>
         {% for b in budgets %}
         <tr>
-          <td><span class="tag tag-blue">{{ b[0].title() }}</span></td>
-          <td style="font-family: 'DM Mono', monospace; font-weight: 500;">RM {{ b[1] }}</td>
+          <td><span class="tag tag-blue">{{ b[0] | title }}</span></td>
+
+          <td style="font-family: 'DM Mono', monospace; font-weight: 500;">
+            RM {{ b[1] }}
+          </td>
+
+          <td>
+            {% if budget_category_map[b[0]] %}
+              {% for cat in budget_category_map[b[0]] %}
+                <span class="tag tag-green">{{ cat | title }}</span>
+              {% endfor %}
+            {% else %}
+              <span style="color: var(--muted); font-size: 12px;">No categories linked</span>
+            {% endif %}
+          </td>
+
           <td style="text-align: right; white-space: nowrap;">
-
-            <a href="/edit-budget/{{ b[0] }}" 
-               style="margin-right:10px; color: #2563eb; font-weight: 500; text-decoration: none;">
-               Edit
+            <a href="/edit-budget/{{ b[0] }}"
+               style="font-size: 12px; color: var(--blue-text); text-decoration: none; font-weight: 500; margin-right: 10px;">
+              Edit
             </a>
 
-            <a href="/delete-budget/{{ b[0] }}" 
+            <a href="/delete-budget/{{ b[0] }}"
                onclick="return confirm('Delete this budget?')"
-               style="color: #ef4444; font-weight: 500; text-decoration: none;">
-               Delete
+               class="btn-link-danger"
+               style="font-size: 12px;">
+              Delete
             </a>
-
           </td>
         </tr>
         {% endfor %}

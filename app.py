@@ -207,12 +207,19 @@ def edit_transaction(id):
         category = request.form.get("category")
         date = request.form.get("date")
         note = request.form.get("note")
-        
+
         cur.execute("""
             UPDATE transactions
             SET amount = %s, category = %s, created_at = %s, note = %s
-            WHERE id = %s AND user_id = %s
-        """, (amount, category, date, note, id, session["user_id"]))
+            WHERE id = %s AND user_id = %s  
+        """, (
+            amount, 
+            category, 
+            date, 
+            note, 
+            id,
+            session["user_id"]
+        ))
 
         mysql.connection.commit()
         cur.close
@@ -222,7 +229,7 @@ def edit_transaction(id):
 
     # get the current transaction
     cur.execute("""
-        SELECT id, amount, type, category, created_at ,note
+        SELECT id, amount, type, category, created_at, note
         FROM transactions
         WHERE id = %s AND user_id = %s
     """, (id, session["user_id"]))
@@ -398,7 +405,7 @@ def pay_tax():
         amount, 
         "expense", 
         "Taxes payment",
-        f"Payment for {loan_name}. {note}"
+        f"Payment for {loan_name}."
     ))
 
     mysql.connection.commit()
@@ -414,6 +421,10 @@ def dashboard():
         flash("Please log in to access your dashboard.")
         return redirect("/login")
 
+    month = request.args.get("month")
+    if not month:
+        month = datetime.now().strftime("%Y-%m")
+
     cur = mysql.connection.cursor()
 
     filter_type = request.args.get("filter")
@@ -422,52 +433,14 @@ def dashboard():
     category_filter = request.args.get("category")
     search = request.args.get("search")
 
-    query = """
+    cur.execute("""
         SELECT id, amount, type, category, created_at, note
         FROM transactions
         WHERE user_id = %s
-    """
+        AND DATE_FORMAT(created_at, '%%Y-%%m') = %s
+        ORDER BY created_at DESC
+    """, (session["user_id"], month))
 
-    params = [session["user_id"]]
-
-    # time filter
-    if filter_type == "day" and value:
-        query += " AND DATE(created_at) = %s"
-        params.append(value)
-    elif filter_type == "month" and value:
-        query += " AND DATE_FORMAT(created_at, '%%Y-%m') = %s"
-        params.append(value)
-    elif filter_type == "week" and value:
-        query += " AND YEARWEEK(created_at, 1) = YEARWEEK(%s, 1)"
-        params.append(value)
-
-    # type filter
-    if type_filter:
-        query += " AND type = %s"
-        params.append(type_filter)
-
-    # category filter
-    if category_filter:
-        query += " AND category = %s"
-        params.append(category_filter)
-
-    # search feature
-    if search:
-        query += """
-        AND (
-            category LIKE %s OR
-            note LIKE %s OR
-            CAST(amount as CHAR) LIKE %s OR
-            DATE_FORMAT(created_at, '%%Y-%%m-%%d') LIKE %s
-        )
-        """
-
-        s = f"%{search}%"
-        params.extend([s, s, s, s])
-    
-    query += " ORDER BY created_at DESC"
-
-    cur.execute(query, tuple(params))
     transactions = cur.fetchall()
 
     grouped = defaultdict(list)
@@ -475,9 +448,11 @@ def dashboard():
     for t in transactions:
         date = t[4].date()
         grouped[date].append(t)
+
+    grouped_sorted = sorted(grouped.items(), reverse=True)
     
 
-    total = sum([row[1] for row in transactions if row[2] == 'expense'])
+    total = sum([row[1] for row in transactions])
 
     cur.execute("""
     SELECT category, limit_amount
@@ -491,11 +466,31 @@ def dashboard():
     cur.execute("""
         SELECT category, SUM(amount)
         FROM transactions
-        WHERE user_id = %s AND type = 'expense'
+        WHERE user_id = %s 
+        AND DATE_FORMAT(created_at, '%%Y-%%m') = %s
         GROUP BY category
-    """, (session["user_id"],))
+    """, (session["user_id"], month))
 
     category_totals = dict(cur.fetchall())
+
+    budget_spent = {}
+
+    for budget_name, limit in budgets.items():
+
+        cur.execute("""
+            SELECT category FROM budget_categories
+            WHERE user_id = %s AND budget_name = %s
+        """, (session["user_id"], budget_name))
+
+        mapped_categories = [row[0] for row in cur.fetchall()]
+
+        spent = 0
+
+        for c in mapped_categories:
+            spent += category_totals.get(c, 0)
+        
+        budget_spent[budget_name] = spent
+
 
     # show taxes
     cur.execute("""
@@ -510,9 +505,10 @@ def dashboard():
     cur.execute("""
         SELECT category, SUM(amount)
         FROM transactions
-        WHERE user_id = %s AND type = 'expense'
+        WHERE user_id = %s 
+        AND DATE_FORMAT(created_at, '%%Y-%%m') = %s
         GROUP BY category
-    """, (session["user_id"],))
+    """, (session["user_id"], month))
 
     chart_data = cur.fetchall()
 
@@ -535,7 +531,9 @@ def dashboard():
         total_budget=total_budget,
         loans=loans,
         categories=categories,
-        grouped_transactions=grouped
+        grouped_transactions=grouped_sorted,
+        month=month,
+        budget_spent=budget_spent
     )
 
 # ===================== ROUTE FOR DELETING TRANSACTIONS =====================
@@ -754,31 +752,126 @@ def budget():
 
     cur = mysql.connection.cursor()
 
+
     if request.method == "POST":
         category = request.form["category"].lower()
-        limit = request.form["limit"]
+        limit = Decimal(request.form["limit"])
+        budget_name = request.form["category"].lower()
+        selected_categories = request.form.getlist("categories")
+
+        if not selected_categories:
+            flash("please select at least 1 category for this budget", "error")
+            return redirect("/budget")
 
         cur.execute("""
-            INSERT INTO budgets (user_id, category, limit_amount) 
+            SELECT id
+            FROM budgets
+            WHERE user_id = %s AND category = %s
+        """, (session["user_id"], budget_name))
+
+        existing_budget = cur.fetchone()
+
+        if existing_budget:
+            cur.execute("""
+                UPDATE budgets
+                SET limit_amount = %s
+                WHERE user_id = %s AND category = %s
+            """, (limit, session["user_id"], budget_name))
+        else:
+            cur.execute("""
+                INSERT INTO budgets (user_id, category, limit_amount) 
+                VALUES (%s, %s, %s)
+            """, (session["user_id"], budget_name, limit))
+
+        cur.execute("""
+            DELETE FROM budget_categories
+            WHERE user_id = %s AND budget_name = %s
+        """, (session["user_id"], budget_name))
+
+        for cat in selected_categories:
+            cur.execute("""
+            INSERT INTO budget_categories (user_id, budget_name, category)
             VALUES (%s, %s, %s)
-            ON DUPLICATE KEY UPDATE limit_amount = %s
-        """, (session["user_id"], category, limit, limit)
-        )
+            """, (session["user_id"], budget_name, cat.lower()))
+
         mysql.connection.commit()
+        flash("Budget added sucessfully!", "success")
+        return redirect("/budget")
+
 
     cur.execute("""
         SELECT category, limit_amount
         FROM budgets
         WHERE user_id = %s
     """, (session["user_id"],))
-
     budgets = cur.fetchall()
+
+
+    cur.execute("""
+        SELECT name 
+        FROM categories
+        WHERE user_id = %s
+    """, (session["user_id"], ))
+    categories = [row[0] for row in cur.fetchall()]
+
+    budget_category_map = {}
+
+    for budget_name, limit in budgets:
+        cur.execute("""
+            SELECT category
+            FROM budget_categories
+            WHERE user_id = %s AND budget_name = %s
+        """, (session["user_id"], budget_name))
+
+        budget_category_map[budget_name] = [row[0] for row in cur.fetchall()]
+
     cur.close()
 
-    return render_template("budget.html", budgets=budgets)
+    return render_template(
+        "budget.html", 
+        budgets=budgets, 
+        categories=categories,
+        budget_category_map=budget_category_map
+    )
+
+# ===================== EXPERIMENTALL!!!! (FULLY AI FOR NOW!) ==============================
+@app.route("/api/transactions/add", methods=["POST"])
+def api_add_transaction():
+    token = request.headers.get("X-API-KEY")
+
+    if token != os.getenv("N8N_API_KEY"):
+        return jsonify({"success": False, "error": "Unauthorized"}), 401
+
+    user_id = int(os.getenv("N8N_USER_ID"))
+
+    data = request.get_json()
+
+    try:
+        amount = Decimal(str(data.get("amount")))
+        category = data.get("category", "").strip().lower()
+        note = data.get("note", "").strip()
+        created_at = data.get("created_at")
+
+        if amount <= 0 or not category:
+            return jsonify({"success": False, "error": "Invalid data"}), 400
+
+        cur = mysql.connection.cursor()
+
+        cur.execute("""
+            INSERT INTO transactions (user_id, amount, type, category, created_at, note)
+            VALUES (%s, %s, 'expense', %s, %s, %s)
+        """, (user_id, amount, category, created_at, note))
+
+        mysql.connection.commit()
+        cur.close()
+
+        return jsonify({"success": True})
+
+    except Exception as e:
+        return jsonify({"success": False, "error": str(e)}), 500
 
 # ===================== ROUTE FOR DELETING BUDGETS =====================
-@app.route("/delete-budget/<category>")
+@app.route("/delete-budget/<path:category>")
 def delete_budget(category):
     cur = mysql.connection.cursor()
     cur.execute(
@@ -792,21 +885,40 @@ def delete_budget(category):
     return redirect("/budget")
 
 # ==================== ROUTE FOR EDITING BUDGETS =======================
-@app.route("/edit-budget/<category>", methods=["GET", "POST"])
+@app.route("/edit-budget/<path:category>", methods=["GET", "POST"])
 def edit_budget(category):
     if "user_id" not in session:
         return redirect("/login")
 
     cur = mysql.connection.cursor()
+    budget_name = category.lower()
 
     if request.method == "POST":
         new_limit = Decimal(request.form["limit"])
+        selected_categories = request.form.getlist("categories")
 
         cur.execute("""
             UPDATE budgets
             SET limit_amount = %s
             WHERE user_id = %s AND category = %s
-        """, (new_limit, session["user_id"], category))
+        """, (new_limit, session["user_id"], budget_name))
+
+        cur.execute("""
+            UPDATE budgets
+            SET limit_amount = %s
+            WHERE user_id = %s AND category = %s
+        """, (new_limit, session["user_id"], budget_name))
+
+        cur.execute("""
+            DELETE FROM budget_categories
+            WHERE user_id = %s AND budget_name = %s
+        """, (session["user_id"], budget_name))
+
+        for cat in selected_categories:
+            cur.execute("""
+                INSERT INTO budget_categories (user_id, budget_name, category)
+                VALUES (%s, %s, %s)
+            """, (session["user_id"], budget_name, cat.lower()))
 
         mysql.connection.commit()
         cur.close()
@@ -818,12 +930,31 @@ def edit_budget(category):
         SELECT category, limit_amount
         FROM budgets
         WHERE user_id = %s AND category = %s
-        """, (session["user_id"], category))
-
+        """, (session["user_id"], budget_name))
     budget = cur.fetchone()
-    cur.close
 
-    return render_template("edit_budget.html", budget=budget)
+    cur.execute("""
+        SELECT name
+        FROM categories
+        WHERE user_id = %s
+    """, (session["user_id"],))
+    categories = [row[0] for row in cur.fetchall()]
+
+    cur.execute("""
+        SELECT category
+        FROM budget_categories
+        WHERE user_id = %s AND budget_name = %s
+    """, (session["user_id"], budget_name))
+    selected_categories = [row[0] for row in cur.fetchall()]
+
+    cur.close()
+
+    return render_template(
+        "edit_budget.html", 
+        budget=budget,
+        categories=categories,
+        selected_categories=selected_categories
+    )
 
 
 # ===================== ROUTE FOR AI-AVAILAIBILITY CHECK =====================
